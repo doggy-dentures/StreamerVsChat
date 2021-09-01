@@ -1,0 +1,7 @@
+export/
+.vscode/
+releases/
+promo/
+scripts/setup.json
+scripts/*.pyc
+psdstuff/

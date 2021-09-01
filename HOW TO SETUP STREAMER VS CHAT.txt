@@ -1,0 +1,18 @@
+To setup Streamer vs Chat, you will need a Twitch account and your Twitch Chat OAuth Password
+If you do not know your Twitch Chat OAuth Password, you can get one at https://twitchapps.com/tmi
+Keep your Twitch Chat OAuth Password private and don't let anyone else see it. Treat it like it's another password for your account
+
+Go into the scripts folder and open up setup.json
+You will see a place to put your username and OAuth Password
+Replace "username_goes_here" with your username, making sure to keep the quotation marks
+Replace "oauth_key_goes_here" with your OAuth Password, making sure to keep the quotation marks. Do not omit the "oauth:" part of the password.
+
+With that, you can now run RunWithChatListener.bat to start
+This will open up both FNF and a command prompt
+The command prompt should say "Connected to twitch.tv!" and not give any error after that
+You should be good to go after that
+
+If you get a "Failed to execute script main" error, then the setup.json file was formatted incorrectly
+If you get a "socket.timeout: timed out" error, then the information you put in the setup.json file was incorrect
+
+BTW, you can change the accepted_commands.txt file in the scripts folder if you want to disable any commands
