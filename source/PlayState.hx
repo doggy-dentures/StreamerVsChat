@@ -256,7 +256,7 @@ class PlayState extends MusicBeatState
 
 	var drainHealth:Bool = false;
 
-	var drunkTween:NumTween;
+	var drunkTween:NumTween = null;
 
 	var lagOn:Bool = false;
 
@@ -1251,10 +1251,14 @@ class PlayState extends MusicBeatState
 		lastReportedPlayheadPosition = 0;
 
 		if (!paused)
+		{
 			FlxG.sound.playMusic("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt, 1, false);
+			FlxG.sound.music.looped = false;
+		}
 
-		// FlxG.sound.music.onComplete = endSong;
+		FlxG.sound.music.onComplete = endSong;
 		vocals.play();
+		vocals.looped = false;
 
 		if (sectionStart)
 		{
@@ -1271,6 +1275,12 @@ class PlayState extends MusicBeatState
 
 		effectTimer.start(5, function(timer)
 		{
+			if (paused)
+				return;
+			if (startingSong)
+				return;
+			if (endingSong)
+				return;
 			readChatData();
 		}, 0);
 	}
@@ -1641,18 +1651,6 @@ class PlayState extends MusicBeatState
 					&& vocals._channel.__source.__backend != null
 					&& vocals._channel.__source.__backend.handle != null)
 					lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
-
-				if (FlxG.sound.music != null
-					&& FlxG.sound.music._channel != null
-					&& FlxG.sound.music._channel.__source != null
-					&& FlxG.sound.music._channel.__source.__backend != null
-					&& FlxG.sound.music._channel.__source.__backend.handle != null
-					&& lime.media.openal.AL.getSourcei(FlxG.sound.music._channel.__source.__backend.handle,
-						lime.media.openal.AL.SOURCE_STATE) == lime.media.openal.AL.STOPPED)
-				{
-					FlxG.sound.music.stop();
-					endSong();
-				}
 			}
 		}
 
@@ -1837,6 +1835,9 @@ class PlayState extends MusicBeatState
 			persistentUpdate = false;
 			persistentDraw = false;
 			paused = true;
+
+			if (effectTimer != null && effectTimer.active)
+				effectTimer.cancel();
 
 			vocals.stop();
 			FlxG.sound.music.stop();
@@ -2048,6 +2049,12 @@ class PlayState extends MusicBeatState
 		var rawJson = sys.io.File.getContent('scripts/data.json').trim();
 		var data:ChatData = haxe.Json.parse(rawJson);
 
+		if (data == null || data.type == null || data.type.length == 0)
+		{
+			resetChatData();
+			return;
+		}
+
 		// trace(data);
 		var choose = data.type[Std.random(data.type.length)];
 		doEffect(choose);
@@ -2066,6 +2073,23 @@ class PlayState extends MusicBeatState
 		if (paused)
 			return;
 		if (endingSong)
+			return;
+
+		var shouldContinue:Bool = false;
+
+		@:privateAccess
+		{
+			if (FlxG.sound.music != null
+				&& FlxG.sound.music._channel != null
+				&& FlxG.sound.music._channel.__source != null
+				&& FlxG.sound.music._channel.__source.__backend != null
+				&& FlxG.sound.music._channel.__source.__backend.handle != null)
+			{
+				shouldContinue = true;
+			}
+		}
+
+		if (!shouldContinue)
 			return;
 
 		var ttl:Float = 0;
@@ -2663,7 +2687,7 @@ class PlayState extends MusicBeatState
 					picked = FlxG.random.int(0, 3);
 				else
 					picked = chooseFrom[FlxG.random.int(0, chooseFrom.length - 1)];
-				playerStrums.members[picked].visible = false;
+				playerStrums.members[picked].alpha = 0;
 				severInputs[picked] = true;
 
 				var okayden:Array<Int> = [];
@@ -2691,7 +2715,7 @@ class PlayState extends MusicBeatState
 				alwaysEnd = true;
 				onEnd = function()
 				{
-					playerStrums.members[picked].visible = true;
+					playerStrums.members[picked].alpha = 1;
 					severInputs[picked] = false;
 				}
 			case 'shake':
@@ -2910,6 +2934,12 @@ class PlayState extends MusicBeatState
 
 	public function endSong():Void
 	{
+		if (endingSong)
+			return;
+		
+		if (effectTimer != null && effectTimer.active)
+			effectTimer.cancel();
+
 		canPause = false;
 		endingSong = true;
 		FlxG.sound.music.volume = 0;
@@ -4403,19 +4433,23 @@ class PlayState extends MusicBeatState
 
 	override public function switchTo(nextState:FlxState):Bool
 	{
-		FlxG.sound.music.stop();
-		vocals.stop();
-		xWiggle = [0, 0, 0, 0];
-		yWiggle = [0, 0, 0, 0];
-		for (i in [xWiggleTween, yWiggleTween])
+		if (xWiggle != null && yWiggle != null && xWiggleTween != null && yWiggleTween != null)
 		{
-			for (j in i)
+			xWiggle = [0, 0, 0, 0];
+			yWiggle = [0, 0, 0, 0];
+			for (i in [xWiggleTween, yWiggleTween])
 			{
-				if (j != null && j.active)
-					j.cancel();
+				for (j in i)
+				{
+					if (j != null && j.active)
+						j.cancel();
+				}
 			}
 		}
-
+		if (drunkTween != null && drunkTween.active)
+		{
+			drunkTween.cancel();
+		}
 		return super.switchTo(nextState);
 	}
 }
