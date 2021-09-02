@@ -148,8 +148,6 @@ class PauseSubState extends MusicBeatSubstate
 
 	function unpause()
 	{
-		FlxTimer.globalManager.active = true;
-		FlxTween.globalManager.active = true;
 		if (Config.noFpsCap)
 			openfl.Lib.current.stage.frameRate = 999;
 		close();
@@ -158,6 +156,8 @@ class PauseSubState extends MusicBeatSubstate
 	override function destroy()
 	{
 		pauseMusic.destroy();
+		FlxTimer.globalManager.active = true;
+		FlxTween.globalManager.active = true;
 
 		super.destroy();
 	}
