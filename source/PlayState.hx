@@ -1,5 +1,6 @@
 package;
 
+import lime.media.openal.AL;
 import flixel.addons.display.FlxBackdrop;
 import flixel.tweens.misc.NumTween;
 import flixel.math.FlxRandom;
@@ -238,8 +239,8 @@ class PlayState extends MusicBeatState
 
 	public static var effectiveDownScroll:Bool;
 
-	var musicThing:AudioThing;
-	var vocals:AudioThing;
+	// var musicThing:AudioThing;
+	var vocals:FlxSound;
 
 	var effectsActive:Map<String, Int> = new Map<String, Int>();
 
@@ -272,14 +273,8 @@ class PlayState extends MusicBeatState
 		effectiveScrollSpeed = PlayState.SONG.speed;
 		effectiveDownScroll = Config.downscroll;
 
-		// FlxG.sound.cache("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt);
-		// FlxG.sound.cache("assets/music/" + SONG.song + "_Voices" + TitleState.soundExt);
-
-		musicThing = new AudioThing("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt);
-		vocals = new AudioThing("assets/music/" + SONG.song + "_Voices" + TitleState.soundExt);
-
-		add(musicThing);
-		add(vocals);
+		FlxG.sound.cache("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt);
+		FlxG.sound.cache("assets/music/" + SONG.song + "_Voices" + TitleState.soundExt);
 
 		if (Config.noFpsCap)
 			openfl.Lib.current.stage.frameRate = 999;
@@ -1255,18 +1250,15 @@ class PlayState extends MusicBeatState
 		previousFrameTime = FlxG.game.ticks;
 		lastReportedPlayheadPosition = 0;
 
-		// if (!paused)
-		// 	FlxG.sound.playMusic("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt, 1, false);
-
 		if (!paused)
-			musicThing.play();
+			FlxG.sound.playMusic("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt, 1, false);
 
 		// FlxG.sound.music.onComplete = endSong;
 		vocals.play();
 
 		if (sectionStart)
 		{
-			musicThing.time = sectionStartTime;
+			FlxG.sound.music.time = sectionStartTime;
 			Conductor.songPosition = sectionStartTime;
 			vocals.time = sectionStartTime;
 		}
@@ -1292,14 +1284,14 @@ class PlayState extends MusicBeatState
 
 		curSong = songData.song;
 
-		// if (SONG.needsVoices)
-		// {
-		// 	vocals = new FlxSound().loadEmbedded("assets/music/" + curSong + "_Voices" + TitleState.soundExt);
-		// }
-		// else
-		// 	vocals = new FlxSound();
+		if (SONG.needsVoices)
+		{
+			vocals = new FlxSound().loadEmbedded("assets/music/" + curSong + "_Voices" + TitleState.soundExt);
+		}
+		else
+			vocals = new FlxSound();
 
-		// FlxG.sound.list.add(vocals);
+		FlxG.sound.list.add(vocals);
 
 		notes = new FlxTypedGroup<Note>();
 		add(notes);
@@ -1531,9 +1523,9 @@ class PlayState extends MusicBeatState
 	{
 		if (paused)
 		{
-			if (musicThing != null)
+			if (FlxG.sound.music != null)
 			{
-				musicThing.pause();
+				FlxG.sound.music.pause();
 				vocals.pause();
 			}
 
@@ -1550,10 +1542,9 @@ class PlayState extends MusicBeatState
 
 		if (paused)
 		{
-			if (musicThing != null && !startingSong && musicThing.gamePaused)
+			if (FlxG.sound.music != null && !startingSong)
 			{
-				musicThing.play();
-				musicThing.gamePaused = false;
+				FlxG.sound.music.play();
 				resyncVocals();
 			}
 
@@ -1570,7 +1561,7 @@ class PlayState extends MusicBeatState
 	function resyncVocals():Void
 	{
 		vocals.pause();
-		Conductor.songPosition = musicThing.time;
+		Conductor.songPosition = FlxG.sound.music.time;
 		vocals.time = Conductor.songPosition;
 		vocals.play();
 	}
@@ -1633,10 +1624,36 @@ class PlayState extends MusicBeatState
 
 		super.update(elapsed);
 
-		if (!endingSong && musicThing != null && musicThing.stopped)
+		@:privateAccess
 		{
-			musicThing.stop();
-			endSong();
+			if (!startingSong && !endingSong)
+			{
+				if (FlxG.sound.music != null
+					&& FlxG.sound.music._channel != null
+					&& FlxG.sound.music._channel.__source != null
+					&& FlxG.sound.music._channel.__source.__backend != null
+					&& FlxG.sound.music._channel.__source.__backend.handle != null)
+					lime.media.openal.AL.sourcef(FlxG.sound.music._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+				if (vocals != null
+					&& vocals.playing
+					&& vocals._channel != null
+					&& vocals._channel.__source != null
+					&& vocals._channel.__source.__backend != null
+					&& vocals._channel.__source.__backend.handle != null)
+					lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+
+				if (FlxG.sound.music != null
+					&& FlxG.sound.music._channel != null
+					&& FlxG.sound.music._channel.__source != null
+					&& FlxG.sound.music._channel.__source.__backend != null
+					&& FlxG.sound.music._channel.__source.__backend.handle != null
+					&& lime.media.openal.AL.getSourcei(FlxG.sound.music._channel.__source.__backend.handle,
+						lime.media.openal.AL.SOURCE_STATE) == lime.media.openal.AL.STOPPED)
+				{
+					FlxG.sound.music.stop();
+					endSong();
+				}
+			}
 		}
 
 		switch (Config.accuracy)
@@ -1652,7 +1669,6 @@ class PlayState extends MusicBeatState
 			persistentUpdate = false;
 			persistentDraw = true;
 			paused = true;
-			musicThing.gamePaused = true;
 
 			PlayerSettings.menuControls();
 
@@ -1821,10 +1837,9 @@ class PlayState extends MusicBeatState
 			persistentUpdate = false;
 			persistentDraw = false;
 			paused = true;
-			musicThing.gamePaused = true;
 
 			vocals.stop();
-			musicThing.stop();
+			FlxG.sound.music.stop();
 
 			PlayerSettings.menuControls();
 			// FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyDown);
@@ -1909,7 +1924,11 @@ class PlayState extends MusicBeatState
 					}
 				}
 
-				if (effectiveDownScroll)
+				var shouldMove = false;
+				if (!lagOn || (lagOn && curStep % 2 == 0))
+					shouldMove = true;
+
+				if (effectiveDownScroll && shouldMove)
 				{
 					daNote.y = (strumLine.y + (Conductor.songPosition - daNote.strumTime) * (0.45 * FlxMath.roundDecimal(effectiveScrollSpeed, 2)));
 
@@ -1932,7 +1951,7 @@ class PlayState extends MusicBeatState
 						}
 					}
 				}
-				else
+				else if (shouldMove)
 				{
 					daNote.y = (strumLine.y - (Conductor.songPosition - daNote.strumTime) * (0.45 * FlxMath.roundDecimal(effectiveScrollSpeed, 2)));
 
@@ -2044,6 +2063,11 @@ class PlayState extends MusicBeatState
 
 	function doEffect(effect:String)
 	{
+		if (paused)
+			return;
+		if (endingSong)
+			return;
+
 		var ttl:Float = 0;
 		var onEnd:(Void->Void) = null;
 		var alwaysEnd:Bool = false;
@@ -2077,15 +2101,12 @@ class PlayState extends MusicBeatState
 			case 'lag':
 				if (effectsActive[effect] == null || effectsActive[effect] <= 0)
 				{
-					oldRate = FlxG.drawFramerate;
-					FlxG.drawFramerate = 16;
 					lagOn = true;
 				}
 				playSound = "lag";
 				ttl = 12;
 				onEnd = function()
 				{
-					FlxG.drawFramerate = oldRate;
 					lagOn = false;
 				}
 			case 'mine':
@@ -2145,24 +2166,49 @@ class PlayState extends MusicBeatState
 					}
 				}
 			case 'songslower':
-				var changeAmount:Float = FlxG.random.float(0.1, 0.3);
-				vocals.speed = musicThing.speed = Conductor.playbackSpeed = Conductor.playbackSpeed - changeAmount;
+				var desiredChangeAmount:Float = FlxG.random.float(0.1, 0.3);
+				var changeAmount = Conductor.playbackSpeed - Math.max(Conductor.playbackSpeed - desiredChangeAmount, 0.2);
+				Conductor.playbackSpeed = Conductor.playbackSpeed - changeAmount;
+				@:privateAccess
+				{
+					lime.media.openal.AL.sourcef(FlxG.sound.music._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+					if (vocals.playing)
+						lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+				}
 				playSound = "songslower";
 				ttl = 15;
 				alwaysEnd = true;
 				onEnd = function()
 				{
-					vocals.speed = musicThing.speed = Conductor.playbackSpeed = Conductor.playbackSpeed + changeAmount;
+					Conductor.playbackSpeed = Conductor.playbackSpeed + changeAmount;
+					@:privateAccess
+					{
+						lime.media.openal.AL.sourcef(FlxG.sound.music._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+						if (vocals.playing)
+							lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+					}
 				};
 			case 'songfaster':
 				var changeAmount:Float = FlxG.random.float(0.1, 0.3);
-				vocals.speed = musicThing.speed = Conductor.playbackSpeed = Conductor.playbackSpeed + changeAmount;
+				Conductor.playbackSpeed = Conductor.playbackSpeed + changeAmount;
+				@:privateAccess
+				{
+					lime.media.openal.AL.sourcef(FlxG.sound.music._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+					if (vocals.playing)
+						lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+				}
 				playSound = "songfaster";
 				ttl = 15;
 				alwaysEnd = true;
 				onEnd = function()
 				{
-					vocals.speed = musicThing.speed = Conductor.playbackSpeed = Conductor.playbackSpeed - changeAmount;
+					Conductor.playbackSpeed = Conductor.playbackSpeed - changeAmount;
+					@:privateAccess
+					{
+						lime.media.openal.AL.sourcef(FlxG.sound.music._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+						if (vocals.playing)
+							lime.media.openal.AL.sourcef(vocals._channel.__source.__backend.handle, lime.media.openal.AL.PITCH, Conductor.playbackSpeed);
+					}
 				};
 			case 'scrollswitch':
 				effectiveDownScroll = !effectiveDownScroll;
@@ -2823,10 +2869,17 @@ class PlayState extends MusicBeatState
 	function mixUp(reset:Bool = false)
 	{
 		var available = [0, 1, 2, 3];
+		var checkMe = [0, 1, 2, 3];
 		if (!reset)
 		{
 			FlxG.random.shuffle(available);
-			if (available == [0, 1, 2, 3])
+			var checkSame = 0;
+			for (i in 0...available.length)
+			{
+				if (checkMe[i] == available[i])
+					checkSame++;
+			}
+			if (checkSame >= available.length)
 				available = [3, 2, 1, 0];
 		}
 		playerStrums.forEach(function(sprite)
@@ -2858,7 +2911,8 @@ class PlayState extends MusicBeatState
 	public function endSong():Void
 	{
 		canPause = false;
-		musicThing.volume = 0;
+		endingSong = true;
+		FlxG.sound.music.volume = 0;
 		vocals.volume = 0;
 		if (SONG.validScore)
 		{
@@ -2927,7 +2981,7 @@ class PlayState extends MusicBeatState
 				}
 
 				PlayState.SONG = Song.loadFromJson(PlayState.storyPlaylist[0].toLowerCase() + difficulty, PlayState.storyPlaylist[0]);
-				musicThing.stop();
+				FlxG.sound.music.stop();
 
 				FlxG.switchState(new PlayState());
 
@@ -4347,26 +4401,9 @@ class PlayState extends MusicBeatState
 		super.destroy();
 	}
 
-	override public function onFocusLost():Void
-	{
-		vocals.pause();
-		musicThing.pause();
-		super.onFocusLost();
-	}
-
-	override public function onFocus()
-	{
-		if (!startingSong && !paused && !endingSong)
-		{
-			vocals.play();
-			musicThing.play();
-		}
-		super.onFocus();
-	}
-
 	override public function switchTo(nextState:FlxState):Bool
 	{
-		musicThing.stop();
+		FlxG.sound.music.stop();
 		vocals.stop();
 		xWiggle = [0, 0, 0, 0];
 		yWiggle = [0, 0, 0, 0];
