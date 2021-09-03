@@ -36,7 +36,7 @@ while True:
             #Wuhu we got a message. Let's extract some details from it
             msg = message['message'].lower()
             username = message['username'].lower()
-            print(username + ": " + msg);
+            print(username + " said something in chat!");
 
             #This is where you change the keys that shall be pressed and listened to.
             #The code below will simulate the key q if "q" is typed into twitch by someone
