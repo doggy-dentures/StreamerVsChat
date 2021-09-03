@@ -43,6 +43,9 @@ while True:
             #.. the same thing with "w"
             #Change this to make Twitch fit to your game!
 
-            with open('accepted_commands.txt') as ff:
-                if msg in ff.read():
-                    k.key_press(msg[1:]);
+            try:
+                with open('accepted_commands.txt') as ff:
+                    if msg in ff.read():
+                        k.key_press(msg[1:]);
+            except:
+                print("Something Something in Main")

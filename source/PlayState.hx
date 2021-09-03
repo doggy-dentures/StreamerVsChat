@@ -2041,24 +2041,42 @@ class PlayState extends MusicBeatState
 
 	function readChatData()
 	{
-		var rawJson = sys.io.File.getContent('scripts/data.json').trim();
-		var data:ChatData = haxe.Json.parse(rawJson);
-
-		if (data == null || data.type == null || data.type.length == 0)
+		try
 		{
-			resetChatData();
-			return;
-		}
+			var rawJson = sys.io.File.getContent('scripts/data.json').trim();
+			var data:ChatData = haxe.Json.parse(rawJson);
 
-		// trace(data);
-		var choose = data.type[Std.random(data.type.length)];
-		doEffect(choose);
+			if (data == null || data.type == null || data.type.length == 0)
+			{
+				resetChatData();
+				return;
+			}
+
+			// trace(data);
+			var choose = data.type[Std.random(data.type.length)];
+			doEffect(choose);
+		}
+		catch (e)
+		{
+			// All exceptions will be caught here
+			trace("OH NOEZ!!!!111!!!11!!");
+			trace(e.message);
+		}
 	}
 
 	function resetChatData()
 	{
 		var blankJson = haxe.Json.stringify({"type": []});
-		sys.io.File.saveContent('scripts/data.json', blankJson);
+		try
+		{
+			sys.io.File.saveContent('scripts/data.json', blankJson);
+		}
+		catch (e)
+		{
+			// All exceptions will be caught here
+			trace("OH NOEZ!!!!222!!!22!!");
+			trace(e.message);
+		}
 	}
 
 	var oldRate:Int = 60;
@@ -4421,7 +4439,7 @@ class PlayState extends MusicBeatState
 				}
 			}
 		}
-		
+
 		if (drunkTween != null && drunkTween.active)
 		{
 			drunkTween.cancel();
