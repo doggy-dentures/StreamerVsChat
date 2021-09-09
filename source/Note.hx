@@ -37,6 +37,7 @@ class Note extends FlxSprite
 	public var isMine:Bool = false;
 	public var isAlert:Bool = false;
 	public var isHeal:Bool = false;
+	public var isFreeze:Bool = false;
 
 	public var specialNote:Bool = false;
 	public var ignoreMiss:Bool = false;
@@ -46,6 +47,8 @@ class Note extends FlxSprite
 	public static var GREEN_NOTE:Int = 2;
 	public static var BLUE_NOTE:Int = 1;
 	public static var RED_NOTE:Int = 3;
+
+	var justMixedUp:Bool = false;
 
 	public function new(_strumTime:Float, _noteData:Int, ?_editor = false, ?_prevNote:Note, ?_sustainNote:Bool = false, ?_rootNote:Note, noteType:Int = 0)
 	{
@@ -69,6 +72,10 @@ class Note extends FlxSprite
 				specialNote = true;
 			case 3:
 				isHeal = true;
+				specialNote = true;
+				ignoreMiss = true;
+			case 4:
+				isFreeze = true;
 				specialNote = true;
 				ignoreMiss = true;
 		}
@@ -143,6 +150,8 @@ class Note extends FlxSprite
 						loadGraphic("assets/images/weeb/pixelUI/warningnote.png");
 					case 3:
 						loadGraphic("assets/images/weeb/pixelUI/healnote.png");
+					case 4:
+						loadGraphic("assets/images/weeb/pixelUI/icenote.png");
 				}
 
 				setGraphicSize(Std.int(width * PlayState.daPixelZoom));
@@ -182,6 +191,8 @@ class Note extends FlxSprite
 						loadGraphic("assets/images/warningnote.png");
 					case 3:
 						loadGraphic("assets/images/healnote.png");
+					case 4:
+						loadGraphic("assets/images/icenote.png");
 				}
 
 				setGraphicSize(Std.int(width * 0.7));
@@ -283,15 +294,34 @@ class Note extends FlxSprite
 
 	var posTween:FlxTween;
 
-	public function updatePosition(available:Array<Int>)
+	public function swapPositions()
 	{
+		justMixedUp = true;
 		if (posTween != null && posTween.active)
 			posTween.cancel();
 		var newX = FlxG.width / 2
 			+ 100
-			+ swagWidth * available[noteData % 4]
+			+ swagWidth * PlayState.notePositions[noteData % 4]
 			+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
-		posTween = FlxTween.tween(this, {x: newX}, 0.25);
+		posTween = FlxTween.tween(this, {x: newX}, 0.25, {
+			onComplete: function(_)
+			{
+				justMixedUp = false;
+			}
+		});
+	}
+
+	function updateXPosition()
+	{
+		if (justMixedUp)
+			return;
+		if (!mustPress)
+			return;
+		var newX = FlxG.width / 2
+			+ 100
+			+ swagWidth * PlayState.notePositions[noteData % 4]
+			+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
+		x = newX;
 	}
 
 	override function update(elapsed:Float)
@@ -304,10 +334,15 @@ class Note extends FlxSprite
 			{
 				canBeHit = (strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 0.125);
 			}
-			else if (isMine)
+			else if (isMine || isFreeze)
 			{
 				canBeHit = (strumTime > Conductor.songPosition - Conductor.safeZoneOffset * 0.9
 					&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 0.9);
+			}
+			else if (isAlert)
+			{
+				canBeHit = (strumTime > Conductor.songPosition - Conductor.safeZoneOffset * 1.2
+					&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 1.2);
 			}
 			else
 			{
@@ -369,7 +404,11 @@ class Note extends FlxSprite
 		}
 
 		centerOffsets();
-		offset.x += PlayState.xWiggle[noteData % 4];
-		offset.y += PlayState.yWiggle[noteData % 4];
+		if (PlayState.xWiggle != null && PlayState.yWiggle != null)
+		{
+			offset.x += PlayState.xWiggle[noteData % 4];
+			offset.y += PlayState.yWiggle[noteData % 4];
+		}
+		updateXPosition();
 	}
 }

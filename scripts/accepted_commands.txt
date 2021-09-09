@@ -23,3 +23,7 @@
 !shake
 !poison
 !dizzy
+!noise
+!flip
+!invuln
+!ice

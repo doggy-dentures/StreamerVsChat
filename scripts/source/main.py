@@ -17,7 +17,7 @@ k = keypresser.Keypresser();
 #key = "oauth:codehere";
 f = open("setup.json", "r").read()
 info_dict = json.loads(f)
-username = info_dict["username"].strip()
+username = info_dict["username"].strip().lower()
 key = info_dict["oauth-key"].strip()
 #print("user: " + username)
 #print("key: " + key)

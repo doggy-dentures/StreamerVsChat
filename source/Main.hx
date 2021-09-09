@@ -1,6 +1,5 @@
 package;
 
-import webm.WebmPlayer;
 import flixel.FlxGame;
 import openfl.display.FPS;
 import openfl.display.Sprite;
@@ -10,11 +9,11 @@ class Main extends Sprite
 
 	public static var fpsDisplay:FPS;
 
-	#if web
-		var vHandler:VideoHandler;
-	#elseif desktop
-		var webmHandle:WebmHandler;
-	#end
+	// #if web
+	// 	var vHandler:VideoHandler;
+	// #elseif desktop
+	// 	var webmHandle:WebmHandler;
+	// #end
 
 	// public static var novid:Bool = Sys.args().contains("-novid");
 	public static var novid = true;
@@ -43,28 +42,28 @@ class Main extends Sprite
 		addChild(fpsDisplay);
 		#end
 
-		if(!novid){
-			var ourSource:String = "assets/videos/DO NOT DELETE OR GAME WILL CRASH/dontDelete.webm";
+		// if(!novid){
+		// 	var ourSource:String = "assets/videos/DO NOT DELETE OR GAME WILL CRASH/dontDelete.webm";
 
-			#if web
-			var str1:String = "HTML CRAP";
-			vHandler = new VideoHandler();
-			vHandler.init1();
-			vHandler.video.name = str1;
-			addChild(vHandler.video);
-			vHandler.init2();
-			GlobalVideo.setVid(vHandler);
-			vHandler.source(ourSource);
-			#elseif desktop
-			var str1:String = "WEBM SHIT"; 
-			webmHandle = new WebmHandler();
-			webmHandle.source(ourSource);
-			webmHandle.makePlayer();
-			webmHandle.webm.name = str1;
-			addChild(webmHandle.webm);
-			GlobalVideo.setWebm(webmHandle);
-			#end
-		}
+		// 	#if web
+		// 	var str1:String = "HTML CRAP";
+		// 	vHandler = new VideoHandler();
+		// 	vHandler.init1();
+		// 	vHandler.video.name = str1;
+		// 	addChild(vHandler.video);
+		// 	vHandler.init2();
+		// 	GlobalVideo.setVid(vHandler);
+		// 	vHandler.source(ourSource);
+		// 	#elseif desktop
+		// 	var str1:String = "WEBM SHIT"; 
+		// 	webmHandle = new WebmHandler();
+		// 	webmHandle.source(ourSource);
+		// 	webmHandle.makePlayer();
+		// 	webmHandle.webm.name = str1;
+		// 	addChild(webmHandle.webm);
+		// 	GlobalVideo.setWebm(webmHandle);
+		// 	#end
+		// }
 
 		trace("-=Args=-");
 		trace("novid: " + novid);
