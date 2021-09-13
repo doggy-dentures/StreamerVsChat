@@ -86,7 +86,12 @@ class TitleVidState extends MusicBeatState
 
 		if(!Main.novid){
 			video = new VideoHandlerMP4();
-			video.playMP4(Paths.video('klaskiiTitle'), function(){
+			// video.playMP4(Paths.video('klaskiiTitle'), function(){
+			// 	FlxG.camera.flash(FlxColor.WHITE, 60);
+			// 	FlxG.sound.playMusic("assets/music/klaskiiLoop.ogg", 0.75);
+			// 	FlxG.switchState(new TitleState());
+			// }, false, true);
+			video.playMP4(Paths.video('second'), function(){
 				FlxG.camera.flash(FlxColor.WHITE, 60);
 				FlxG.sound.playMusic("assets/music/klaskiiLoop.ogg", 0.75);
 				FlxG.switchState(new TitleState());

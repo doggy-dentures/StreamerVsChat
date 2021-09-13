@@ -27,3 +27,5 @@
 !flip
 !invuln
 !ice
+!randomize
+!fakeheal

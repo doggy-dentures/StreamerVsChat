@@ -17,7 +17,7 @@ class GameOverSubstate extends MusicBeatSubstate
 
 	var stageSuffix:String = "";
 
-	public function new(x:Float, y:Float, camX:Float, camY:Float)
+	public function new(boyfriend:Boyfriend, follow:FlxObject)
 	{
 		var daStage = PlayState.curStage;
 		var daBf:String = '';
@@ -37,18 +37,20 @@ class GameOverSubstate extends MusicBeatSubstate
 
 		Conductor.songPosition = 0;
 
-		bf = new Boyfriend(x, y, daBf);
+		bf = new Boyfriend(boyfriend.x, boyfriend.y, daBf);
 		add(bf);
 
-		camFollow = new FlxObject(camX, camY, 1, 1);
+		if (follow == null)
+			follow = new FlxObject(bf.x, bf.y, 1, 1);
+		
+		camFollow = new FlxObject(follow.x, follow.y, 1, 1);
 		add(camFollow);
+
 		FlxTween.tween(camFollow, {x: bf.getGraphicMidpoint().x, y: bf.getGraphicMidpoint().y}, 3, {ease: FlxEase.quintOut, startDelay: 0.5});
 
 		FlxG.sound.play('assets/sounds/fnf_loss_sfx' + stageSuffix + TitleState.soundExt);
 		Conductor.changeBPM(100);
 
-		// FlxG.camera.followLerp = 1;
-		// FlxG.camera.focusOn(FlxPoint.get(FlxG.width / 2, FlxG.height / 2));
 		FlxG.camera.scroll.set();
 		FlxG.camera.target = null;
 

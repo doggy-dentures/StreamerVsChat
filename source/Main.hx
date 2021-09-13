@@ -15,26 +15,30 @@ class Main extends Sprite
 	// 	var webmHandle:WebmHandler;
 	// #end
 
-	// public static var novid:Bool = Sys.args().contains("-novid");
-	public static var novid = true;
+	public static var novid:Bool = Sys.args().contains("-novid");
+	// public static var novid = true;
 	// public static var nopreload:Bool = Sys.args().contains("-nopreload");
 	public static var nopreload:Bool = true;
 	public static var skipsound:Bool = Sys.args().contains("-skipsound");
 	public static var skipcharacters:Bool = Sys.args().contains("-skipcharacters");
 	public static var skipgraphics:Bool = Sys.args().contains("-skipgraphics");
 	public static var flippymode:Bool = Sys.args().contains("-flippymode");
-	public static var didBat:Bool = Sys.args().contains("-didBat");
+
+	public static var streamMethod:String;
 
 	public function new()
 	{
 		super();
 
-		if(!nopreload)
-			addChild(new FlxGame(0, 0, Startup, 1, 144, 144, true));
-		else if (!didBat)
-			addChild(new FlxGame(0, 0, BatWarningState, 1, 144, 144, true));
-		else
-			addChild(new FlxGame(0, 0, TitleVidState, 1, 144, 144, true));
+		// if(!nopreload)
+		// 	addChild(new FlxGame(0, 0, Startup, 1, 144, 144, true));
+		// else
+		// 	addChild(new FlxGame(0, 0, TitleVidState, 1, 144, 144, true));
+
+		// addChild(new FlxGame(0, 0, TwitchState, 1, 144, 144, true));
+		// addChild(new FlxGame(0, 0, YouTubeState, 1, 144, 144, true));
+
+		addChild(new FlxGame(0, 0, SelectState, 1, 144, 144, true));
 
 		#if !mobile
 		fpsDisplay = new FPS(10, 3, 0xFFFFFF);

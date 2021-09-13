@@ -65,6 +65,8 @@ class PlayState extends MusicBeatState
 {
 	public static var instance:PlayState = null;
 
+	public static var commands:Array<String> = [];
+
 	public static var curStage:String = '';
 	public static var SONG:SwagSong;
 	public static var isStoryMode:Bool = false;
@@ -237,7 +239,6 @@ class PlayState extends MusicBeatState
 	var filterMap:Map<String, {filter:BitmapFilter, ?onUpdate:Void->Void}>;
 
 	public static var effectiveScrollSpeed:Float;
-
 	public static var effectiveDownScroll:Bool;
 
 	var musicThing:AudioThing;
@@ -280,6 +281,8 @@ class PlayState extends MusicBeatState
 
 	public static var notePositions:Array<Int> = [0, 1, 2, 3];
 
+	var blurEffect:MosaicEffect = new MosaicEffect();
+
 	override public function create()
 	{
 		instance = this;
@@ -293,6 +296,8 @@ class PlayState extends MusicBeatState
 		effectiveScrollSpeed = PlayState.SONG.speed;
 		effectiveDownScroll = Config.downscroll;
 		notePositions = [0, 1, 2, 3];
+
+		blurEffect.setStrength(0, 0);
 
 		// FlxG.sound.cache("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt);
 		// FlxG.sound.cache("assets/music/" + SONG.song + "_Voices" + TitleState.soundExt);
@@ -346,9 +351,6 @@ class PlayState extends MusicBeatState
 				];
 
 				{filter: new ColorMatrixFilter(matrix)}
-			},
-			"Blur" => {
-				filter: new BlurFilter(8, 16)
 			},
 			"BlurLittle" => {
 				filter: new BlurFilter()
@@ -1697,7 +1699,7 @@ class PlayState extends MusicBeatState
 
 			PlayerSettings.menuControls();
 
-			openSubState(new PauseSubState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
+			openSubState(new PauseSubState());
 		}
 
 		if (FlxG.keys.justPressed.SEVEN)
@@ -1875,8 +1877,7 @@ class PlayState extends MusicBeatState
 			// FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyDown);
 			// FlxG.stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyUp);
 
-			openSubState(new GameOverSubstate(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y, camFollow.getScreenPosition().x,
-				camFollow.getScreenPosition().y));
+			openSubState(new GameOverSubstate(boyfriend, camFollow));
 			sectionStart = false;
 		}
 
@@ -2069,48 +2070,22 @@ class PlayState extends MusicBeatState
 
 		if (drainHealth)
 		{
-			health = Math.max(0.8, health - (FlxG.elapsed * 0.12 * dmgMultiplier));
+			health = Math.max(0.25, health - (FlxG.elapsed * 0.13 * dmgMultiplier));
 		}
 	}
 
 	function readChatData()
 	{
-		try
-		{
-			var rawJson = sys.io.File.getContent('scripts/data.json').trim();
-			var data:ChatData = haxe.Json.parse(rawJson);
+		if (commands.length == 0)
+			return;
 
-			if (data == null || data.type == null || data.type.length == 0)
-			{
-				resetChatData();
-				return;
-			}
-
-			// trace(data);
-			var choose = data.type[Std.random(data.type.length)];
-			doEffect(choose);
-		}
-		catch (e)
-		{
-			// All exceptions will be caught here
-			trace("OH NOEZ!!!!111!!!11!!");
-			trace(e.message);
-		}
+		var choose = commands[Std.random(commands.length)];
+		doEffect(choose);
 	}
 
 	function resetChatData()
 	{
-		var blankJson = haxe.Json.stringify({"type": []});
-		try
-		{
-			sys.io.File.saveContent('scripts/data.json', blankJson);
-		}
-		catch (e)
-		{
-			// All exceptions will be caught here
-			trace("OH NOEZ!!!!222!!!22!!");
-			trace(e.message);
-		}
+		commands = [];
 	}
 
 	var oldRate:Int = 60;
@@ -2142,14 +2117,57 @@ class PlayState extends MusicBeatState
 					filtersGame.remove(filterMap.get("Grayscale").filter);
 				}
 			case 'blur':
-				filters.push(filterMap.get("Blur").filter);
 				filtersGame.push(filterMap.get("BlurLittle").filter);
+				blurEffect.setStrength(32, 32);
+				strumLineNotes.forEach(function(sprite)
+				{
+					sprite.shader = blurEffect.shader;
+				});
+				for (daNote in unspawnNotes)
+				{
+					if (daNote == null)
+						continue;
+					if (daNote.strumTime >= Conductor.songPosition)
+						daNote.shader = blurEffect.shader;
+				}
+				for (daNote in notes)
+				{
+					if (daNote == null)
+						continue;
+					else
+						daNote.shader = blurEffect.shader;
+				}
+				boyfriend.shader = blurEffect.shader;
+				dad.shader = blurEffect.shader;
+				gf.shader = blurEffect.shader;
+
 				playSound = "blur";
 				playSoundVol = 0.7;
 				ttl = 12;
 				onEnd = function()
 				{
-					filters.remove(filterMap.get("Blur").filter);
+					strumLineNotes.forEach(function(sprite)
+					{
+						sprite.shader = null;
+					});
+					for (daNote in unspawnNotes)
+					{
+						if (daNote == null)
+							continue;
+						if (daNote.strumTime >= Conductor.songPosition)
+							daNote.shader = null;
+					}
+					for (daNote in notes)
+					{
+						if (daNote == null)
+							continue;
+						else
+							daNote.shader = null;
+					}
+					boyfriend.shader = null;
+					dad.shader = null;
+					gf.shader = null;
+					blurEffect.setStrength(0, 0);
 					filtersGame.remove(filterMap.get("BlurLittle").filter);
 				}
 			case 'lag':
@@ -2365,7 +2383,7 @@ class PlayState extends MusicBeatState
 				};
 			case 'cover':
 				var errorMessage = new FlxSprite();
-				var random = FlxG.random.int(0, 11);
+				var random = FlxG.random.int(0, 13);
 				var randomPosition:Bool = true;
 
 				switch (random)
@@ -2453,6 +2471,24 @@ class PlayState extends MusicBeatState
 						errorMessage.blend = ADD;
 						playSound = 'snow';
 						playSoundVol = 0.6;
+					case 12:
+						randomPosition = false;
+						errorMessage = new VideoHandlerMP4();
+						cast(errorMessage, VideoHandlerMP4).playMP4(Paths.video('spiral2'), null, false, false).setDimensions(1280, 720);
+						addedMP4s.push(cast(errorMessage, VideoHandlerMP4));
+						errorMessages.add(errorMessage);
+						errorMessage.x = errorMessage.y = 0;
+						errorMessage.blend = ADD;
+						playSound = 'spiral';
+					case 13:
+						randomPosition = false;
+						errorMessage = new VideoHandlerMP4();
+						cast(errorMessage, VideoHandlerMP4).playMP4(Paths.video('wheel'), null, false, false).setDimensions(1280, 720);
+						addedMP4s.push(cast(errorMessage, VideoHandlerMP4));
+						errorMessages.add(errorMessage);
+						errorMessage.x = errorMessage.y = 0;
+						errorMessage.blend = ADD;
+						playSound = 'wheel';
 				}
 
 				if (randomPosition)
@@ -2511,18 +2547,23 @@ class PlayState extends MusicBeatState
 				{
 					if (daNote == null)
 						continue;
-					if (daNote.strumTime >= Conductor.songPosition)
-						daNote.alpha = 0.4;
+					if (daNote.strumTime >= Conductor.songPosition && !daNote.isSustainNote)
+						daNote.doGhost();
+					else if (daNote.strumTime >= Conductor.songPosition && daNote.isSustainNote)
+						daNote.doGhost(daNote.rootNote.ghostSpeed, daNote.rootNote.ghostSine);
 				}
 				for (daNote in notes)
 				{
 					if (daNote == null)
 						continue;
-					daNote.alpha = 0.4;
+					if (!daNote.isSustainNote)
+						daNote.doGhost();
+					else if (daNote.isSustainNote)
+						daNote.doGhost(daNote.rootNote.ghostSpeed, daNote.rootNote.ghostSine);
 				}
 				playSound = "ghost";
 				playSoundVol = 0.5;
-				ttl = 20;
+				ttl = 15;
 				onEnd = function()
 				{
 					for (daNote in unspawnNotes)
@@ -2530,13 +2571,13 @@ class PlayState extends MusicBeatState
 						if (daNote == null)
 							continue;
 						if (daNote.strumTime >= Conductor.songPosition)
-							daNote.alpha = 1.0;
+							daNote.undoGhost();
 					}
 					for (daNote in notes)
 					{
 						if (daNote == null)
 							continue;
-						daNote.alpha = 1.0;
+						daNote.undoGhost();
 					}
 				};
 			case 'wiggle':
@@ -2726,7 +2767,7 @@ class PlayState extends MusicBeatState
 				{
 					camUnderTop.flash(FlxColor.WHITE, 7, null, true);
 					remove(whiteScreen);
-					FlxG.sound.play('assets/sounds/ringing' + TitleState.soundExt, 0.6);
+					FlxG.sound.play('assets/sounds/ringing' + TitleState.soundExt, 0.4);
 				});
 
 			case 'nostrum':
@@ -2853,19 +2894,38 @@ class PlayState extends MusicBeatState
 			case 'noise':
 				var noisysound:String = "";
 				var noisysoundVol:Float = 1.0;
-				switch (FlxG.random.int(0, 3))
+				switch (FlxG.random.int(0, 9))
 				{
 					case 0:
 						noisysound = "dialup";
+						noisysoundVol = 0.5;
 					case 1:
-						noisysound = "blender";
-						noisysoundVol = 0.6;
-					case 2:
-						noisysound = "vuvuzela";
-						noisysoundVol - 0.7;
-					case 3:
 						noisysound = "crowd";
+						noisysoundVol = 0.3;
+					case 2:
+						noisysound = "airhorn";
+						noisysoundVol = 0.6;
+					case 3:
+						noisysound = "copter";
+						noisysoundVol = 0.5;
+					case 4:
+						noisysound = "magicmissile";
+						noisysoundVol = 0.9;
+					case 5:
+						noisysound = "ping";
+						noisysoundVol = 1.0;
+					case 6:
+						noisysound = "call";
+						noisysoundVol = 1.0;
+					case 7:
+						noisysound = "knock";
+						noisysoundVol = 1.0;
+					case 8:
+						noisysound = "fuse";
 						noisysoundVol = 0.7;
+					case 9:
+						noisysound = "hallway";
+						noisysoundVol = 0.9;
 				}
 				noiseSound.stop();
 				noiseSound.loadEmbedded('assets/sounds/' + noisysound + TitleState.soundExt);
@@ -2930,6 +2990,67 @@ class PlayState extends MusicBeatState
 				addNote(4, startPoint, startPoint, -1);
 				addNote(4, nextPoint, nextPoint, -1);
 				addNote(4, lastPoint, lastPoint, -1);
+
+			case 'randomize':
+				var available = [0, 1, 2, 3];
+				FlxG.random.shuffle(available);
+				switch (available)
+				{
+					case [0, 1, 2, 3]:
+						available = [3, 2, 1, 0];
+					default:
+				}
+
+				for (daNote in unspawnNotes)
+				{
+					if (daNote == null)
+						continue;
+					if (daNote.strumTime >= Conductor.songPosition)
+					{
+						daNote.noteData = available[daNote.noteData];
+						daNote.refreshSprite();
+					}
+				}
+				for (daNote in notes)
+				{
+					if (daNote == null)
+						continue;
+					else
+					{
+						daNote.noteData = available[daNote.noteData];
+						daNote.refreshSprite();
+					}
+				}
+
+				playSound = "randomize";
+				playSoundVol = 0.7;
+				ttl = 10;
+				onEnd = function()
+				{
+					for (daNote in unspawnNotes)
+					{
+						if (daNote == null)
+							continue;
+						if (daNote.strumTime >= Conductor.songPosition)
+						{
+							daNote.noteData = daNote.trueNoteData;
+							daNote.refreshSprite();
+						}
+					}
+					for (daNote in notes)
+					{
+						if (daNote == null)
+							continue;
+						else
+						{
+							daNote.noteData = daNote.trueNoteData;
+							daNote.refreshSprite();
+						}
+					}
+				}
+
+			case 'fakeheal':
+				addNote(5, 5, 9);
 
 			default:
 				return;
@@ -4106,11 +4227,14 @@ class PlayState extends MusicBeatState
 	{
 		if (!note.wasGoodHit)
 		{
-			if (note.isMine)
+			if (note.isMine || note.isFakeHeal)
 			{
 				misses++;
-				health -= FlxG.random.float(0.2, 0.4) * dmgMultiplier;
-				FlxG.sound.play('assets/sounds/mine' + TitleState.soundExt);
+				health -= FlxG.random.float(0.25, 0.5) * dmgMultiplier;
+				if (note.isMine)
+					FlxG.sound.play('assets/sounds/mine' + TitleState.soundExt);
+				else if (note.isFakeHeal)
+					FlxG.sound.play('assets/sounds/fakeheal' + TitleState.soundExt);
 				var nope:FlxSprite = new FlxSprite(0, 0);
 				nope.loadGraphic("assets/images/cross.png");
 				nope.setGraphicSize(Std.int(nope.width * 4));
@@ -4168,7 +4292,7 @@ class PlayState extends MusicBeatState
 			}
 			else if (note.isHeal)
 			{
-				health += FlxG.random.float(0.25, 0.5);
+				health += FlxG.random.float(0.3, 0.6);
 				FlxG.sound.play('assets/sounds/heal' + TitleState.soundExt);
 				boyfriend.playAnim('hey', true);
 			}
@@ -4720,9 +4844,4 @@ class PlayState extends MusicBeatState
 
 		return super.switchTo(nextState);
 	}
-}
-
-typedef ChatData =
-{
-	var type:Array<String>;
 }

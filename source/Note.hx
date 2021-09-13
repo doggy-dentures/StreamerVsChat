@@ -1,5 +1,6 @@
 package;
 
+import flixel.util.FlxDestroyUtil;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxTween.FlxTweenManager;
 import flixel.FlxG;
@@ -17,6 +18,7 @@ class Note extends FlxSprite
 
 	public var mustPress:Bool = false;
 	public var noteData:Int = 0;
+	public var trueNoteData:Int = 0;
 	public var canBeHit:Bool = false;
 	public var tooLate:Bool = false;
 	public var wasGoodHit:Bool = false;
@@ -38,6 +40,7 @@ class Note extends FlxSprite
 	public var isAlert:Bool = false;
 	public var isHeal:Bool = false;
 	public var isFreeze:Bool = false;
+	public var isFakeHeal:Bool = false;
 
 	public var specialNote:Bool = false;
 	public var ignoreMiss:Bool = false;
@@ -47,6 +50,8 @@ class Note extends FlxSprite
 	public static var GREEN_NOTE:Int = 2;
 	public static var BLUE_NOTE:Int = 1;
 	public static var RED_NOTE:Int = 3;
+
+	var posTween:FlxTween;
 
 	var justMixedUp:Bool = false;
 
@@ -78,6 +83,10 @@ class Note extends FlxSprite
 				isFreeze = true;
 				specialNote = true;
 				ignoreMiss = true;
+			case 5:
+				isFakeHeal = true;
+				specialNote = true;
+				ignoreMiss = true;
 		}
 
 		x += 100;
@@ -98,6 +107,7 @@ class Note extends FlxSprite
 		}
 
 		noteData = _noteData;
+		trueNoteData = _noteData;
 
 		var daStage:String = PlayState.curStage;
 
@@ -152,6 +162,8 @@ class Note extends FlxSprite
 						loadGraphic("assets/images/weeb/pixelUI/healnote.png");
 					case 4:
 						loadGraphic("assets/images/weeb/pixelUI/icenote.png");
+					case 5:
+						loadGraphic("assets/images/weeb/pixelUI/fakehealnote.png");
 				}
 
 				setGraphicSize(Std.int(width * PlayState.daPixelZoom));
@@ -193,6 +205,8 @@ class Note extends FlxSprite
 						loadGraphic("assets/images/healnote.png");
 					case 4:
 						loadGraphic("assets/images/icenote.png");
+					case 5:
+						loadGraphic("assets/images/fakehealnote.png");
 				}
 
 				setGraphicSize(Std.int(width * 0.7));
@@ -292,8 +306,6 @@ class Note extends FlxSprite
 		}
 	}
 
-	var posTween:FlxTween;
-
 	public function swapPositions()
 	{
 		justMixedUp = true;
@@ -315,18 +327,112 @@ class Note extends FlxSprite
 	{
 		if (justMixedUp)
 			return;
-		if (!mustPress)
+		if (mustPress)
+		{
+			var newX = FlxG.width / 2
+				+ 100
+				+ swagWidth * PlayState.notePositions[noteData % 4]
+				+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
+			x = newX;
+		}
+		else
+		{
+			var newX = 0
+				+ 100
+				+ swagWidth * noteData
+				+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
+			x = newX;
+		}
+	}
+
+	public var isGhosting:Bool = false;
+	public var ghostSpeed:Float = 1;
+	public var ghostSine:Bool = false;
+
+	public function doGhost(?speed:Float, ?sine:Bool)
+	{
+		if (speed == null)
+			speed = FlxG.random.float(0.003, 0.006);
+		if (sine == null)
+			sine = FlxG.random.bool();
+
+		ghostSine = sine;
+		ghostSpeed = speed;
+		isGhosting = true;
+	}
+
+	public function undoGhost()
+	{
+		isGhosting = false;
+		alpha = 1.0;
+	}
+
+	public function refreshSprite()
+	{
+		if (animation == null || animation.name == null)
 			return;
-		var newX = FlxG.width / 2
-			+ 100
-			+ swagWidth * PlayState.notePositions[noteData % 4]
-			+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
-		x = newX;
+
+		if (animation.name.contains("Scroll"))
+		{
+			switch (noteData)
+			{
+				case 0:
+					animation.play('purpleScroll');
+				case 1:
+					animation.play('blueScroll');
+				case 2:
+					animation.play('greenScroll');
+				case 3:
+					animation.play('redScroll');
+			}
+		}
+		else if (animation.name.contains("end"))
+		{
+			switch (noteData)
+			{
+				case 2:
+					animation.play('greenholdend');
+				case 3:
+					animation.play('redholdend');
+				case 1:
+					animation.play('blueholdend');
+				case 0:
+					animation.play('purpleholdend');
+			}
+		}
+		else if (animation.name.contains("hold"))
+		{
+			switch (noteData)
+			{
+				case 2:
+					animation.play('greenhold');
+				case 3:
+					animation.play('redhold');
+				case 1:
+					animation.play('bluehold');
+				case 0:
+					animation.play('purplehold');
+			}
+		}
+
+		updateHitbox();
 	}
 
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
+
+		if (isGhosting)
+		{
+			if (ghostSine)
+			{
+				alpha = 0.1 + 0.65 * Math.abs(Math.sin(Conductor.songPosition * ghostSpeed));
+			}
+			else
+			{
+				alpha = 0.1 + 0.65 * Math.abs(Math.cos(Conductor.songPosition * ghostSpeed));
+			}
+		}
 
 		if (mustPress)
 		{
@@ -334,12 +440,12 @@ class Note extends FlxSprite
 			{
 				canBeHit = (strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 0.125);
 			}
-			else if (isMine || isFreeze)
+			else if (isMine || isFreeze || isFakeHeal)
 			{
 				canBeHit = (strumTime > Conductor.songPosition - Conductor.safeZoneOffset * 0.9
 					&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 0.9);
 			}
-			else if (isAlert)
+			else if (isAlert || isHeal)
 			{
 				canBeHit = (strumTime > Conductor.songPosition - Conductor.safeZoneOffset * 1.2
 					&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset * 1.2);
@@ -410,5 +516,15 @@ class Note extends FlxSprite
 			offset.y += PlayState.yWiggle[noteData % 4];
 		}
 		updateXPosition();
+	}
+
+	override public function destroy()
+	{
+		if (posTween != null && posTween.active)
+		{
+			posTween.cancel();
+		}
+		FlxDestroyUtil.destroy(posTween);
+		super.destroy();
 	}
 }
