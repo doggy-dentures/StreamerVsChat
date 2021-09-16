@@ -45,6 +45,8 @@ class Note extends FlxSprite
 	public var specialNote:Bool = false;
 	public var ignoreMiss:Bool = false;
 
+	public var didLatePenalty:Bool = false;
+
 	public static var swagWidth:Float = 160 * 0.7;
 	public static var PURP_NOTE:Int = 0;
 	public static var GREEN_NOTE:Int = 2;
@@ -337,10 +339,7 @@ class Note extends FlxSprite
 		}
 		else
 		{
-			var newX = 0
-				+ 100
-				+ swagWidth * noteData
-				+ (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
+			var newX = 0 + 100 + swagWidth * noteData + (isSustainNote ? (PlayState.curStage.startsWith('school') ? width * 0.75 : width) : 0);
 			x = newX;
 		}
 	}
@@ -364,7 +363,10 @@ class Note extends FlxSprite
 	public function undoGhost()
 	{
 		isGhosting = false;
-		alpha = 1.0;
+		if (isSustainNote)
+			alpha = 0.6;
+		else
+			alpha = 1.0;
 	}
 
 	public function refreshSprite()

@@ -2004,13 +2004,15 @@ class PlayState extends MusicBeatState
 				// MOVE NOTE TRANSPARENCY CODE BECAUSE REASONS
 				if (daNote.tooLate)
 				{
-					if (daNote.alpha > 0.3)
+					if (!daNote.didLatePenalty)
 					{
 						if (!daNote.ignoreMiss)
 						{
 							noteMiss(daNote.noteData, (daNote.isAlert ? FlxG.random.float(0.25, 0.5) : 0.055), false, true, daNote.isAlert);
 							vocals.volume = 0;
-							daNote.alpha = 0.3;
+							daNote.didLatePenalty = true;
+							if (!daNote.isGhosting)
+								daNote.alpha = 0.3;
 						}
 					}
 				}
@@ -2070,7 +2072,7 @@ class PlayState extends MusicBeatState
 
 		if (drainHealth)
 		{
-			health = Math.max(0.25, health - (FlxG.elapsed * 0.13 * dmgMultiplier));
+			health = Math.max(0.25, health - (FlxG.elapsed * 0.125 * dmgMultiplier));
 		}
 	}
 
@@ -2852,7 +2854,7 @@ class PlayState extends MusicBeatState
 				drainHealth = true;
 				playSound = "poison";
 				playSoundVol = 0.6;
-				ttl = 8;
+				ttl = 5;
 				boyfriend.color = 0xf003fc;
 				onEnd = function()
 				{

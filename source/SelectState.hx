@@ -15,6 +15,7 @@ class SelectState extends FlxState
 	var selectText:FlxText = new FlxText();
 	var twitch:FlxText = new FlxText();
 	var yt:FlxText = new FlxText();
+	var discord:FlxText = new FlxText();
 	var marker:FlxShapeArrow;
 
 	var available:Array<FlxText> = [];
@@ -30,24 +31,24 @@ class SelectState extends FlxState
 		selectText.text = "Select your streaming platform";
 		selectText.y = 5;
 		selectText.screenCenter(X);
-
-		twitch.setFormat(null, 24, FlxColor.WHITE, FlxTextAlign.CENTER);
-		twitch.text = "Twitch";
-		twitch.screenCenter(Y);
-		twitch.x = FlxG.width / 4 - twitch.width / 2;
-
-		yt.setFormat(null, 24, FlxColor.WHITE, FlxTextAlign.CENTER);
-		yt.text = "YouTube";
-		yt.screenCenter(Y);
-		yt.x = FlxG.width * 0.75 - yt.width / 2;
+		add(selectText);
 
 		available.push(twitch);
 		available.push(yt);
+		// available.push(discord);
+		twitch.text = "Twitch";
+		yt.text = "YouTube";
+		discord.text = "Discord";
 
-        add(selectText);
-        add(twitch);
-        add(yt);
-        add(marker);
+		for (i in 0...available.length)
+		{
+			available[i].setFormat(null, 24, FlxColor.WHITE, FlxTextAlign.CENTER);
+			available[i].screenCenter(Y);
+			available[i].x = (i * FlxG.width / available.length + FlxG.width / available.length / 2) - available[i].width / 2;
+			add(available[i]);
+		}
+
+		add(marker);
 	}
 
 	override function update(elapsed:Float)
@@ -63,6 +64,8 @@ class SelectState extends FlxState
 					FlxG.switchState(new TwitchState());
 				case 'YouTube':
 					FlxG.switchState(new YouTubeState());
+				// case 'Discord':
+				// 	FlxG.switchState(new DiscordState());
 			}
 		}
 
