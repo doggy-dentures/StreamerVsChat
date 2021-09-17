@@ -2119,29 +2119,35 @@ class PlayState extends MusicBeatState
 					filtersGame.remove(filterMap.get("Grayscale").filter);
 				}
 			case 'blur':
-				filtersGame.push(filterMap.get("BlurLittle").filter);
-				blurEffect.setStrength(32, 32);
-				strumLineNotes.forEach(function(sprite)
+				if (effectsActive[effect] == null || effectsActive[effect] <= 0)
 				{
-					sprite.shader = blurEffect.shader;
-				});
-				for (daNote in unspawnNotes)
-				{
-					if (daNote == null)
-						continue;
-					if (daNote.strumTime >= Conductor.songPosition)
-						daNote.shader = blurEffect.shader;
-				}
-				for (daNote in notes)
-				{
-					if (daNote == null)
-						continue;
+					filtersGame.push(filterMap.get("BlurLittle").filter);
+					if (curStage.startsWith('school'))
+						blurEffect.setStrength(2, 2);
 					else
-						daNote.shader = blurEffect.shader;
+						blurEffect.setStrength(32, 32);
+					strumLineNotes.forEach(function(sprite)
+					{
+						sprite.shader = blurEffect.shader;
+					});
+					for (daNote in unspawnNotes)
+					{
+						if (daNote == null)
+							continue;
+						if (daNote.strumTime >= Conductor.songPosition)
+							daNote.shader = blurEffect.shader;
+					}
+					for (daNote in notes)
+					{
+						if (daNote == null)
+							continue;
+						else
+							daNote.shader = blurEffect.shader;
+					}
+					boyfriend.shader = blurEffect.shader;
+					dad.shader = blurEffect.shader;
+					gf.shader = blurEffect.shader;
 				}
-				boyfriend.shader = blurEffect.shader;
-				dad.shader = blurEffect.shader;
-				gf.shader = blurEffect.shader;
 
 				playSound = "blur";
 				playSoundVol = 0.7;
