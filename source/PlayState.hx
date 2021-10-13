@@ -167,6 +167,9 @@ class PlayState extends MusicBeatState
 	private var iconP1:HealthIcon;
 	private var iconP2:HealthIcon;
 	private var camUnderTop:FlxCamera;
+
+	public var camSpellPrompts:FlxCamera;
+
 	private var camTop:FlxCamera;
 	private var camNotes:FlxCamera;
 	private var camHUD:FlxCamera;
@@ -283,6 +286,20 @@ class PlayState extends MusicBeatState
 
 	var blurEffect:MosaicEffect = new MosaicEffect();
 
+	public static var validWords:Array<String> = [];
+
+	var spellPrompts:Array<SpellPrompt> = [];
+
+	public static var controlButtons:Array<String> = [];
+
+	var terminateStep:Int = -1;
+	var terminateMessage:FlxSprite = new FlxSprite();
+	var terminateSound:FlxSound = new FlxSound();
+	var terminateTimestamps:Array<TerminateTimestamp> = new Array<TerminateTimestamp>();
+	var terminateCooldown:Bool = false;
+
+	var shieldSprite:FlxSprite = new FlxSprite();
+
 	override public function create()
 	{
 		instance = this;
@@ -299,6 +316,44 @@ class PlayState extends MusicBeatState
 
 		blurEffect.setStrength(0, 0);
 
+		var wordList:Array<String> = [];
+
+		if (FileSystem.exists("assets/data/words.txt"))
+		{
+			var content:String = sys.io.File.getContent("assets/data/words.txt");
+			wordList = content.split("\n");
+		}
+
+		validWords.resize(0);
+		for (word in wordList)
+		{
+			if (StringTools.contains(word.toLowerCase(), StringTools.trim(FlxG.save.data.leftBind).toLowerCase())
+				|| StringTools.contains(word.toLowerCase(), StringTools.trim(FlxG.save.data.downBind).toLowerCase())
+				|| StringTools.contains(word.toLowerCase(), StringTools.trim(FlxG.save.data.upBind).toLowerCase())
+				|| StringTools.contains(word.toLowerCase(), StringTools.trim(FlxG.save.data.rightBind).toLowerCase())
+				|| StringTools.contains(word.toLowerCase(), StringTools.trim(FlxG.save.data.killBind).toLowerCase()))
+			{
+				continue;
+			}
+			else
+			{
+				validWords.push(word.toLowerCase());
+			}
+		}
+		if (validWords.length <= 0)
+		{
+			trace("wtf no valid words");
+			validWords = ["i am error"];
+		}
+
+		controlButtons.resize(0);
+		for (thing in [
+			FlxG.save.data.leftBind, FlxG.save.data.downBind, FlxG.save.data.upBind, FlxG.save.data.rightBind, FlxG.save.data.killBind, "LEFT", "RIGHT", "UP",
+			"DOWN", "SEVEN", "EIGHT", "NINE"
+		])
+		{
+			controlButtons.push(StringTools.trim(thing).toLowerCase());
+		}
 		// FlxG.sound.cache("assets/music/" + SONG.song + "_Inst" + TitleState.soundExt);
 		// FlxG.sound.cache("assets/music/" + SONG.song + "_Voices" + TitleState.soundExt);
 
@@ -357,15 +412,23 @@ class PlayState extends MusicBeatState
 			}
 		];
 
+		terminateSound = new FlxSound().loadEmbedded('assets/sounds/beep' + TitleState.soundExt);
+		FlxG.sound.list.add(terminateSound);
+
+		terminateMessage.visible = false;
+		add(terminateMessage);
+
 		camGame = new FlxCamera();
 		camHUD = new FlxCamera();
 		camNotes = new FlxCamera();
 		camTop = new FlxCamera();
 		camUnderTop = new FlxCamera();
+		camSpellPrompts = new FlxCamera();
 		camHUD.bgColor.alpha = 0;
 		camNotes.bgColor.alpha = 0;
 		camTop.bgColor.alpha = 0;
 		camUnderTop.bgColor.alpha = 0;
+		camSpellPrompts.bgColor.alpha = 0;
 
 		camNotes.setFilters(filters);
 		camNotes.filtersEnabled = true;
@@ -377,6 +440,7 @@ class PlayState extends MusicBeatState
 		FlxG.cameras.add(camHUD);
 		FlxG.cameras.add(camNotes);
 		FlxG.cameras.add(camUnderTop);
+		FlxG.cameras.add(camSpellPrompts);
 		FlxG.cameras.add(camTop);
 
 		FlxCamera.defaultCameras = [camGame];
@@ -879,6 +943,7 @@ class PlayState extends MusicBeatState
 
 		add(dad);
 		add(boyfriend);
+		add(shieldSprite);
 
 		var doof:DialogueBox = new DialogueBox(false, dialogue);
 		// doof.x += 70;
@@ -1043,6 +1108,23 @@ class PlayState extends MusicBeatState
 		// FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, keyUp);
 
 		super.create();
+
+		if (curStage.startsWith('school'))
+		{
+			shieldSprite.loadGraphic("assets/images/weeb/pixelUI/shield.png");
+			shieldSprite.alpha = 0.85;
+			shieldSprite.setGraphicSize(Std.int(shieldSprite.width * PlayState.daPixelZoom));
+			shieldSprite.updateHitbox();
+			shieldSprite.antialiasing = false;
+		}
+		else
+		{
+			shieldSprite.loadGraphic("assets/images/shield.png");
+			shieldSprite.alpha = 0.85;
+			shieldSprite.scale.x = shieldSprite.scale.y = 0.8;
+			shieldSprite.updateHitbox();
+		}
+		shieldSprite.visible = false;
 	}
 
 	function updateAccuracy()
@@ -2074,6 +2156,68 @@ class PlayState extends MusicBeatState
 		{
 			health = Math.max(0.25, health - (FlxG.elapsed * 0.125 * dmgMultiplier));
 		}
+
+		for (i in 0...spellPrompts.length)
+		{
+			if (spellPrompts[i] == null)
+			{
+				continue;
+			}
+			else if (spellPrompts[i].ttl <= 0)
+			{
+				health -= 0.5 * dmgMultiplier;
+				FlxG.sound.play('assets/sounds/spellfail' + TitleState.soundExt);
+				camSpellPrompts.flash(FlxColor.RED, 1, null, true);
+				spellPrompts[i].kill();
+				FlxDestroyUtil.destroy(spellPrompts[i]);
+				remove(spellPrompts[i]);
+				spellPrompts.remove(spellPrompts[i]);
+			}
+			else if (!spellPrompts[i].alive)
+			{
+				remove(spellPrompts[i]);
+				FlxDestroyUtil.destroy(spellPrompts[i]);
+			}
+		}
+
+		for (timestamp in terminateTimestamps)
+		{
+			if (timestamp == null || !timestamp.alive)
+				continue;
+
+			if (timestamp.tooLate)
+			{
+				if (!timestamp.didLatePenalty)
+				{
+					timestamp.didLatePenalty = true;
+					var healthToTake = health / 3 * dmgMultiplier;
+					health -= healthToTake;
+					boyfriend.playAnim('hit', true);
+					FlxG.sound.play('assets/sounds/theshoe' + TitleState.soundExt);
+					timestamp.kill();
+					terminateTimestamps.resize(0);
+
+					var theShoe = new FlxSprite();
+					theShoe.loadGraphic("assets/images/theshoe.png");
+					theShoe.x = boyfriend.x + boyfriend.width / 2 - theShoe.width / 2;
+					theShoe.y = -FlxG.height / defaultCamZoom;
+					add(theShoe);
+					FlxTween.tween(theShoe, {y: boyfriend.y + boyfriend.height - theShoe.height}, 0.2, {
+						onComplete: function(tween)
+						{
+							if (tween.executions >= 2)
+							{
+								theShoe.kill();
+								FlxDestroyUtil.destroy(theShoe);
+								tween.cancel();
+								FlxDestroyUtil.destroy(tween);
+							}
+						},
+						type: PINGPONG
+					});
+				}
+			}
+		}
 	}
 
 	function readChatData()
@@ -2958,11 +3102,21 @@ class PlayState extends MusicBeatState
 				playSound = "invuln";
 				playSoundVol = 0.5;
 				ttl = 5;
-				boyfriend.alpha = 0.4;
+				if (boyfriend.curCharacter.contains("pixel"))
+				{
+					shieldSprite.x = boyfriend.x + boyfriend.width / 2 - shieldSprite.width / 2 - 150;
+					shieldSprite.y = boyfriend.y + boyfriend.height / 2 - shieldSprite.height / 2 - 150;
+				}
+				else
+				{
+					shieldSprite.x = boyfriend.x + boyfriend.width / 2 - shieldSprite.width / 2;
+					shieldSprite.y = boyfriend.y + boyfriend.height / 2 - shieldSprite.height / 2;
+				}
+				shieldSprite.visible = true;
 				dmgMultiplier = 0;
 				onEnd = function()
 				{
-					boyfriend.alpha = 1.0;
+					shieldSprite.visible = false;
 					dmgMultiplier = 1.0;
 				}
 
@@ -3059,6 +3213,15 @@ class PlayState extends MusicBeatState
 
 			case 'fakeheal':
 				addNote(5, 5, 9);
+
+			case 'spell':
+				var spellThing = new SpellPrompt();
+				spellPrompts.push(spellThing);
+				playSound = "spell";
+				playSoundVol = 0.66;
+
+			case 'terminate':
+				terminateStep = 3;
 
 			default:
 				return;
@@ -3763,6 +3926,31 @@ class PlayState extends MusicBeatState
 					badNoteCheck();
 				}
 			}
+		}
+
+		if (FlxG.keys.justPressed.SPACE && terminateTimestamps.length > 0 && !terminateCooldown)
+		{
+			boyfriend.playAnim('dodge', true);
+			terminateCooldown = true;
+
+			for (i in 0...terminateTimestamps.length)
+			{
+				if (!terminateTimestamps[i].alive || terminateTimestamps[i] == null)
+					continue;
+
+				if (terminateTimestamps[i].alive && terminateTimestamps[i].canBeHit)
+				{
+					terminateTimestamps[i].wasGoodHit = true;
+					terminateTimestamps[i].kill();
+					terminateTimestamps.resize(0);
+				}
+			}
+
+			new FlxTimer().start(Conductor.stepCrochet * 2 / 1000, function(tmr)
+			{
+				terminateCooldown = false;
+				FlxDestroyUtil.destroy(tmr);
+			});
 		}
 
 		var severIndex = -1;
@@ -4582,6 +4770,32 @@ class PlayState extends MusicBeatState
 		{
 			lightningStrikeShit();
 		}
+
+		switch (terminateStep)
+		{
+			case 3:
+				var terminate = new TerminateTimestamp(Math.floor(Conductor.songPosition / Conductor.crochet) * Conductor.crochet + Conductor.crochet * 3);
+				add(terminate);
+				terminateTimestamps.push(terminate);
+				terminateStep--;
+			case 2 | 1 | 0:
+				terminateMessage.loadGraphic("assets/images/terminate" + terminateStep + ".png");
+				terminateMessage.screenCenter(XY);
+				terminateMessage.cameras = [camTop];
+				terminateMessage.visible = true;
+				if (terminateStep > 0)
+				{
+					terminateSound.volume = 0.6;
+					terminateSound.play(true);
+				}
+				else if (terminateStep == 0)
+				{
+					FlxG.sound.play('assets/sounds/beep2' + TitleState.soundExt, 0.85);
+				}
+				terminateStep--;
+			case -1:
+				terminateMessage.visible = false;
+		}
 	}
 
 	var curLight:Int = 0;
@@ -4851,5 +5065,31 @@ class PlayState extends MusicBeatState
 			effectTimer.cancel();
 
 		return super.switchTo(nextState);
+	}
+}
+
+class TerminateTimestamp extends FlxObject
+{
+	public var strumTime:Float = 0;
+	public var canBeHit:Bool = false;
+	public var wasGoodHit:Bool = false;
+	public var tooLate:Bool = false;
+	public var didLatePenalty:Bool = false;
+
+	public function new(_strumTime:Float)
+	{
+		super();
+		strumTime = _strumTime;
+	}
+
+	override public function update(elapsed:Float)
+	{
+		super.update(elapsed);
+
+		canBeHit = (strumTime > Conductor.songPosition - Conductor.safeZoneOffset
+			&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset);
+
+		if (strumTime < Conductor.songPosition - Conductor.safeZoneOffset && !wasGoodHit)
+			tooLate = true;
 	}
 }

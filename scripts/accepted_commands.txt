@@ -29,3 +29,5 @@
 !ice
 !randomize
 !fakeheal
+!terminate
+!spell

@@ -16,6 +16,7 @@ class SelectState extends FlxState
 	var twitch:FlxText = new FlxText();
 	var yt:FlxText = new FlxText();
 	var discord:FlxText = new FlxText();
+	var offline:FlxText = new FlxText();
 	var marker:FlxShapeArrow;
 
 	var available:Array<FlxText> = [];
@@ -36,9 +37,11 @@ class SelectState extends FlxState
 		available.push(twitch);
 		available.push(yt);
 		// available.push(discord);
+		available.push(offline);
 		twitch.text = "Twitch";
 		yt.text = "YouTube";
 		discord.text = "Discord";
+		offline.text = "Offline\n(no chat interaction)";
 
 		for (i in 0...available.length)
 		{
@@ -58,14 +61,16 @@ class SelectState extends FlxState
 		if (FlxG.keys.justPressed.ENTER && !wasPressed)
 		{
 			wasPressed = true;
-			switch (available[selected].text)
+			switch (selected)
 			{
-				case 'Twitch':
+				case 0:
 					FlxG.switchState(new TwitchState());
-				case 'YouTube':
+				case 1:
 					FlxG.switchState(new YouTubeState());
-				// case 'Discord':
+				// case 2:
 				// 	FlxG.switchState(new DiscordState());
+				case 2:
+					FlxG.switchState(new OfflineState());
 			}
 		}
 
