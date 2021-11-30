@@ -2149,9 +2149,6 @@ class PlayState extends MusicBeatState
 		rightPress = false;
 		rightRelease = false;
 
-		// if (FlxG.keys.justPressed.P)
-		// 	readChatData();
-
 		if (drainHealth)
 		{
 			health = Math.max(0.25, health - (FlxG.elapsed * 0.125 * dmgMultiplier));
@@ -3300,6 +3297,13 @@ class PlayState extends MusicBeatState
 		var pickSteps = FlxG.random.int(min, max);
 		var pickTime = Conductor.songPosition + pickSteps * Conductor.stepCrochet;
 		var pickData:Int = 0;
+
+		if (SONG.notes.length <= Math.floor((curStep + pickSteps + 1) / 16))
+			return;
+
+		if (SONG.notes[Math.floor((curStep + pickSteps + 1) / 16)] == null)
+			return;
+
 		if (specificData == null)
 		{
 			if (SONG.notes[Math.floor((curStep + pickSteps + 1) / 16)].mustHitSection)
@@ -3328,6 +3332,7 @@ class PlayState extends MusicBeatState
 		}
 		else
 		{
+
 			if (SONG.notes[Math.floor((curStep + pickSteps + 1) / 16)].mustHitSection)
 			{
 				pickData = specificData % 4;
